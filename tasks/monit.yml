@@ -1,7 +1,11 @@
 ---
 - name: install monit
   apt: name=monit update_cache=yes
+  when: ansible_os_family == 'Debian'
 
+- name: install monit
+  yum: name=monit state=present
+  when: ansible_os_family == 'RedHat'
 
 - name: allow localhost access in monit config
   lineinfile: dest=/etc/monit/monitrc line="{{ item }}"
@@ -9,7 +13,8 @@
     - "set httpd port 2812 and"
     - "use address localhost"
     - "allow localhost"
-
+  when: ansible_os_family == 'Debian'
+# Already Configured in CentOS7
 
 - when: enable_mail_alerts == True and smtp_use_tls == True
   name: set tls_option
@@ -21,9 +26,15 @@
   set_fact: smtp_tls_option=""
 
 
-- when: enable_mail_alerts == True
+- when: enable_mail_alerts == True and ansible_os_family == 'Debian'
   name: set mail server for notifications in monit
   lineinfile: dest=/etc/monit/monitrc line="{{ item }}"
+  with_items:
+    - "set mailserver {{ smtp_host }} port {{ smtp_port }} username {{ smtp_user }} password {{ smtp_password }} {{ smtp_tls_option }} with timeout 30 seconds"
+
+- when: enable_mail_alerts == True and ansible_os_family == 'RedHat'
+  name: set mail server for notifications in monit
+  lineinfile: dest=/etc/monitrc line="{{ item }}"
   with_items:
     - "set mailserver {{ smtp_host }} port {{ smtp_port }} username {{ smtp_user }} password {{ smtp_password }} {{ smtp_tls_option }} with timeout 30 seconds"
 
@@ -36,12 +47,25 @@
   template:
     src: app.monit.j2
     dest: "/etc/monit/conf.d/{{ app_name }}.monit"
-
+  when: ansible_os_family == 'Debian'
 
 - name: add monit config for nginx
   template:
     src: nginx.monit.j2
     dest: "/etc/monit/conf.d/nginx.monit"
+  when: ansible_os_family == 'Debian'
+
+- name: add monit config for elixir app
+  template:
+    src: app.monit.j2
+    dest: "/etc/monit.d/{{ app_name }}.monit"
+  when: ansible_os_family == 'RedHat'
+
+- name: add monit config for nginx
+  template:
+    src: RedHat/nginx.monit.j2
+    dest: "/etc/monit.d/nginx.monit"
+  when: ansible_os_family == 'RedHat'
 
 - name: reload monit
   service: name=monit state=reloaded

@@ -21,6 +21,31 @@
     - libffi-dev
     - libtool
     - unixodbc-dev
+  when: ansible_os_family == 'Debian'
+
+- name: "install system packages"
+  yum: name="{{ item }}" state=present
+  with_items:
+    - epel-release
+    - gcc
+    - gcc-c++
+    - curl
+    - wget
+    - unzip
+    - git
+    - python-devel
+    - make
+    - automake
+    - autoconf
+    - readline-devel
+    - ncurses-devel
+    - openssl-devel
+    - libyaml-devel
+    - libxslt-devel
+    - libffi-devel
+    - libtool
+    - unixODBC-devel
+  when: ansible_os_family == 'RedHat'
 
 - name: should have credentials dir
   file: path=~/credentials state=directory

@@ -1,12 +1,26 @@
 ---
 - name: add nginx pkg repo
   apt_repository: repo="ppa:nginx/stable"
-
+  when: ansible_os_family == 'Debian'
 
 - name: install nginx
   apt: name=nginx update_cache=yes state=present
+  when: ansible_os_family == 'Debian'
 
+- name: Enable nginx repo.
+  template:
+    src: RedHat/nginx.repo.j2
+    dest: /etc/yum.repos.d/nginx.repo
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'RedHat'
 
+- name: Ensure nginx is installed.
+  yum: name=nginx state=present
+  when: ansible_os_family == 'RedHat'
+
+  ## Monit will start and watch Nginx
 - name: "disable nginx and don't start service on reboot"
   service: name=nginx enabled=no state=stopped
 
@@ -16,7 +30,30 @@
   with_items:
     - /etc/nginx/sites-available/default
     - /etc/nginx/sites-enabled/default
+  when: ansible_os_family == 'Debian'
 
+
+- name: add nginx default directories
+  file: name="{{ item }}" state=directory
+  with_items:
+    - /etc/nginx/sites-available
+    - /etc/nginx/sites-enabled
+  when: ansible_os_family == 'RedHat'
+
+- name: "configure nginx default directories"
+  replace: dest=/etc/nginx/nginx.conf regexp='include\ /etc/nginx/conf\.d/\*\.conf;' replace="include /etc/nginx/sites-enabled/*.nginx;"
+  when: ansible_os_family == 'RedHat'
+
+- name: "Add http to firewalld (Open port 80)"
+  firewalld: permanent=true state=enabled zone=public immediate=true service="{{ item }}"
+  with_items:
+    - http
+    # - https
+  when: ansible_os_family == 'RedHat'
+
+- name: "Set SELinux for nginx (Otherwise: error 502 - bad gateway)"
+  seboolean: name=httpd_can_network_connect state=yes persistent=yes
+  when: ansible_os_family == 'RedHat'
 
 - name: add nginx config for elixir app
   template:

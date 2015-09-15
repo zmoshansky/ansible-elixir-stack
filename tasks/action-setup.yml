@@ -31,13 +31,20 @@
 
 
 - include: nginx.yml
+  tags:
+  - nginx
+
 - include: monit.yml
 - include: release.yml
 
 
 - name: start nginx using monit
   monit: name="nginx" state=started
+  tags:
+  - nginx
 
 
 - name: reload nginx config
   service: name=nginx state=reloaded
+  tags:
+  - nginx

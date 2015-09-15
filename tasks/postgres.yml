@@ -1,21 +1,45 @@
 ---
 - name: "add postgres repository"
   apt_repository: repo="deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main"
-
+  when: ansible_os_family == 'Debian'
 
 - name: "add postgres repository key"
   apt_key: url="https://www.postgresql.org/media/keys/ACCC4CF8.asc"
-
+  when: ansible_os_family == 'Debian'
 
 - name: "install postgres & libpq-dev"
   apt: name="{{ item }}" update_cache=yes state=present
   with_items:
     - postgresql-9.4
     - libpq-dev
-
+  when: ansible_os_family == 'Debian'
 
 - name: install psycopg2 python module
   pip: name=psycopg2
+  when: ansible_os_family == 'Debian'
+
+
+- name: "install postgres & libpq-dev"
+  yum: name="{{ item }}" update_cache=yes state=present
+  with_items:
+    - postgresql
+    - postgresql-server
+    - postgresql-contrib
+    - python-psycopg2
+  when: ansible_os_family == 'RedHat'
+
+# TODO - Configure MD5 Password Auth
+# IPv4 local connections: #after this line
+# host    all             all             127.0.0.1/32            md5 #add
+# - name: Configure db authentication
+  # when: ansible_os_family == 'RedHat'
+
+- name: Initiate database
+  command: service postgresql initdb
+          creates=/var/lib/pgsql/data/postgresql.conf
+  when: ansible_os_family == 'RedHat'
+- service: name=postgresql state=started enabled=yes
+  when: ansible_os_family == 'RedHat'
 
 
 - name: create postgres user for deployer
@@ -25,7 +49,6 @@
     role_attr_flags: CREATEDB,SUPERUSER
   sudo: yes
   sudo_user: postgres
-
 
 - name: "create database"
   postgresql_db: name="{{ database_name }}" encoding="UTF-8"

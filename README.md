@@ -71,10 +71,10 @@ $ ansible-playbook playbooks/deploy.yml
 
 ## FAQ
 
-* **Is this only meant for small $5 servers?**  
+* **Is this only meant for small $5 servers?**
 Should fit servers of any size. In that case you could also increase the swap and npm
 
-* **How to have different set of servers for staging and production?**  
+* **How to have different set of servers for staging and production?**
 Use the `inventory` file as a template and maintain different inventory files for staging and production. Let's say your staging inventory file is called `staging.inventory`, then you could do `ansible-playbook setup.yml -i staging.inventory` (and similar for deploy). Notice the `-i` switch.
 *B/w if you are going this way, you probably should learn Ansible or hire someone who knows it*
 
@@ -82,3 +82,12 @@ Use the `inventory` file as a template and maintain different inventory files fo
 ## Misc
 
 * [ansible-galaxy guide](http://docs.ansible.com/galaxy.html#installing-roles)
+
+
+### Improvements
+
+Use generic roles to install/configure underlying services
+- [ ] [Nginx](https://github.com/geerlingguy/ansible-role-nginx)
+- [ ] [Postgres](https://github.com/galaxyproject/ansible-postgresql)
+- [ ] [Pip](https://github.com/bobbyrenwick/ansible-pip)
+- [ ] [Monit](https://github.com/William-Yeh/ansible-monit)
