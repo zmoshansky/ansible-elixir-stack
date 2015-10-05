@@ -40,6 +40,15 @@
     - /etc/nginx/sites-enabled
   when: ansible_os_family == 'RedHat'
 
+- name: add nginx tls directory
+  file: name="/etc/nginx/tls" state=directory mode=0600
+
+  # TODO move certs
+
+  # TODO Restore Permisions for certs
+  # sudo restorecon -Rv /etc/nginx/tls
+  # when: ansible_os_family == 'RedHat'
+
 - name: "configure nginx default directories"
   replace: dest=/etc/nginx/nginx.conf regexp='include\ /etc/nginx/conf\.d/\*\.conf;' replace="include /etc/nginx/sites-enabled/*.nginx;"
   when: ansible_os_family == 'RedHat'
@@ -48,7 +57,7 @@
   firewalld: permanent=true state=enabled zone=public immediate=true service="{{ item }}"
   with_items:
     - http
-    # - https
+    - https
   when: ansible_os_family == 'RedHat'
 
 - name: "Set SELinux for nginx (Otherwise: error 502 - bad gateway)"

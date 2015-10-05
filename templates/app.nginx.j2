@@ -2,7 +2,10 @@ upstream {{app_name}} {
     server localhost:{{app_port}};
 }
 
-##  Prevent processing requests with undefined server names
+## Lockdown nginx server
+## https://calomel.org/nginx.html
+
+## Prevent processing requests with undefined server names (port scanning)
 server {
     listen      80;
     return      444;
@@ -10,26 +13,36 @@ server {
 
 ## Bump 80 to 443
 ## https://serverfault.com/questions/67316/in-nginx-how-can-i-rewrite-all-http-requests-to-https-while-maintaining-sub-dom
-# {% if domains | length != 0 %}
-# server {
-#     listen         80;
-#     server_name {% for domain in domains %} {{ domain }}{% endfor %};
-#     return         301 https://$server_name$request_uri;
-# }
-# {% endif %}
+{% if domains | length != 0 %}
+server {
+    listen         80;
+    server_name {% for domain in domains %} {{ domain }}{% endfor %};
+    return         301 https://$server_name$request_uri;
+}
+{% endif %}
 
-# The following map statement is required
-# if you plan to support channels. See http://nginx.com/blog/websocket-nginx/
+## The following map statement is required
+## if you plan to support channels. See http://nginx.com/blog/websocket-nginx/
 map $http_upgrade $connection_upgrade {
     default upgrade;
     '' close;
 }
 
 server{
-    ## Protect Against POODLE
-    # ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-    # listen 443 ssl;
-    listen 80;
+    ## Protect Against POODLE, Needed below v1.9.1
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+    ssl_certificate      /etc/nginx/tls/prod_cert_199.pem;
+    ssl_certificate_key  /etc/nginx/tls/prod_key_199.pem;
+
+    ssl_session_cache shared:SSL:1m;
+    ssl_session_timeout  5m;
+
+    ssl_ciphers  HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers   on;
+    listen 443 ssl;
+
+    # listen 80;
 
     {% if domains | length != 0 %}
     server_name {% for domain in domains %} {{ domain }}{% endfor %};
@@ -41,21 +54,48 @@ server{
 
     location @proxy {
         proxy_redirect off;
-        proxy_pass http://charlie;
+        proxy_pass http://{{app_name}};
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
-        # Related to nginx's ability to cache responses
+        ## Related to nginx's ability to cache responses
         proxy_http_version 1.1;
 
-        # The following two headers need to be set in order
-        # to keep the websocket connection open. Otherwise you'll see
-        # HTTP 400's being returned from websocket connections.
+        ## The following two headers need to be set in order
+        ## to keep the websocket connection open. Otherwise you'll see
+        ## HTTP 400's being returned from websocket connections.
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
     }
 
+    ## Don't send the nginx version
+    server_tokens off;
+
     ## Gzip Settings
+    ## https://stackoverflow.com/questions/12640014/enable-gzip-for-css-and-js-files-on-nginx-server-for-magento
     # gzip on;
-    # gzip_disable "msie6";
+    # gzip_http_version 1.0;
+    # # 1-9; 9 is highest compression
+    # gzip_comp_level 4;
+    # # default 20 bytes
+    # # gzip_min_length 1100;
+    # gzip_buffers 4 8k;
+    # gzip_types
+    #     # text/html is always compressed by HttpGzipModule
+    #     text/css
+    #     text/javascript
+    #     text/xml
+    #     text/plain
+    #     text/x-component
+    #     application/javascript
+    #     application/json
+    #     application/xml
+    #     application/rss+xml
+    #     font/truetype
+    #     font/opentype
+    #     application/vnd.ms-fontobject
+    #     image/svg+xml svg svgz;
+    # gzip_proxied expired no-cache no-store private auth;
+    # gzip_disable "MSIE [1-6]\.";
+    # gzip_vary on;
 }

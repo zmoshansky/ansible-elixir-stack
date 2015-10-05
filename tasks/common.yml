@@ -45,6 +45,8 @@
     - libffi-devel
     - libtool
     - unixODBC-devel
+    # SEManage Tool
+    - policycoreutils-python
   when: ansible_os_family == 'RedHat'
 
 - name: should have credentials dir
